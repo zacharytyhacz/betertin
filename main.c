@@ -1,38 +1,8 @@
 #include <stdio.h>
+#include <stdbool.h>
+#include <string.h>
 
-// commands
-//
-// clock into current sheet
-// t in / t i
-//
-// clock out of current sheet
-// t out / t o
-//
-// use new sheet
-// t sheet <sheetname>
-//
-// show help menu for commands
-// t help
-// 
-// open the raw csv to edit ( uses 
-// t edit / t e
-// 
-// append text to current clocked message
-// t append / t a
-//
-// show time records for current sheet
-// t display < w, d, m, y, a>
-
-
-// configuration fields:
-//
-// timefolder=~/.bettertin
-// sheetsfolder=~/.bettertin/sheets
-// currentsheet=my app
-// editorcommand=vim
-// timeformat=some date form in c
-
-
+// my first c program
 
 // 1. parse setup configuration environment
 // 2. parse arguments
@@ -42,11 +12,56 @@
 //
 // index,in,out,message
 
+// if the given or default config folder is empty or non-existant, we initialize it.
+void initiate_config_folder() {
+}
 
+void check_configuration_folder(char *configuration_folder[]) {
+    
+}
+
+void parse_flag(const char *flag, const char *flag_argument) {
+    if (strncmp(flag, "--config", strlen(flag))) {
+        
+    }
+}
+
+bool prefix(const char *pre, const char *str) {
+    return strncmp(pre, str, strlen(pre)) == 0;
+}
+
+bool empty(const char *text) {
+    return text[0] != '\0';
+}
 
 int main(int argc, char *argv[]) {
-    char string[] = "Title";
+    char *command = "";
+    char *command_argument = "";
 
-    printf("Hello World! \n");
+    for(int i = 1; i < sizeof(&argv); i++) {
+        char *this_arg = argv[i];
+
+        if(this_arg == NULL){
+            break;
+        }
+
+        if(prefix("--", this_arg)) {
+            printf("\n\n got a flag: %s", this_arg);
+            parse_flag(this_arg, argv[i + 1]);
+            continue;
+        }
+
+        if (empty(command)) {
+            command = this_arg;
+            printf("\n\n COMMAND: %s", command);
+        } else if (empty(command_argument)) {
+            command_argument = this_arg;
+            printf("\n\n COMMAND ARH: %s", command_argument);
+        } else {
+            printf("\n\nERROR: Unknown command '%s'\n\n", this_arg);
+            return 1;
+        }
+    }
+
     return 0;
 }
