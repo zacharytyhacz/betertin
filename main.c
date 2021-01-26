@@ -31,7 +31,7 @@ bool prefix(const char *pre, const char *str) {
 }
 
 bool empty(const char *text) {
-    return text[0] != '\0';
+    return text[0] == '\0';
 }
 
 int main(int argc, char *argv[]) {
