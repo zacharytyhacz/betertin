@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <stdbool.h>
 #include <string.h>
 
@@ -12,33 +13,185 @@
 //
 // index,in,out,message
 
-// if the given or default config folder is empty or non-existant, we initialize it.
-void initiate_config_folder() {
-}
 
-void check_configuration_folder(char *configuration_folder[]) {
-    
-}
+FILE *config = NULL;
+char *config_path = "";
 
-void parse_flag(const char *flag, const char *flag_argument) {
-    if (strncmp(flag, "--config", strlen(flag))) {
-        
-    }
+char *SHEETS_FOLDER = "";
+char *CURRENT_SHEET = "";
+char *EDITOR_COMMAND = "";
+char *TIME_FORMAT = "";
+
+bool empty(const char *text) {
+    return text[0] == '\0';
 }
 
 bool prefix(const char *pre, const char *str) {
     return strncmp(pre, str, strlen(pre)) == 0;
 }
 
-bool empty(const char *text) {
-    return text[0] == '\0';
+int error(char *message) {
+    fprintf(stderr, message);
+    return 1;
+}
+
+bool config_initialize(const char *path) {
+    FILE *init_config = fopen(path,"a");
+
+    if (!init_config) {
+        return false;
+    }
+
+    fprintf(init_config, "sheetsfolder=/home/zac/.config/betertin/sheets/\n");
+    fprintf(init_config, "currentsheet=\n");
+    fprintf(init_config, "editorcommand=vim\n");
+    fprintf(init_config, "timeformat=\n");
+
+    fclose(init_config);
+
+    return true;
+}
+
+bool config_load() {
+    int bufferLength = 255;
+    char config_line[bufferLength];
+    char config_delim[] = "=";
+
+    if ( empty(config_path) ){
+        config_path = strcat(getenv("HOME"), "/.config/betertin/config");
+    }
+
+    config = fopen(config_path,"r");
+
+    if (!config && !config_initialize(config_path)) {
+        error("Failed to inititalize the config\n\n");
+        return false;
+    }
+
+    while(fgets(config_line, bufferLength, config)) {
+        char *config_key = strtok(config_line, config_delim);
+        char* config_value = strtok(NULL, config_delim);
+
+        if (strcmp("sheetsfolder", config_key) == 0) {
+            SHEETS_FOLDER = config_value;
+            printf("\nconfig sheets folder: %s", SHEETS_FOLDER);
+        }
+
+        if (strcmp("currentsheet", config_key) == 0) {
+            CURRENT_SHEET = config_value;
+            printf("\nconfig current sheet: %s", CURRENT_SHEET);
+        }
+
+        if (strcmp("editorcommand", config_key) == 0) {
+            EDITOR_COMMAND = config_value;
+            printf("\nconfig edior command: %s", EDITOR_COMMAND);
+        }
+
+        if (strcmp("timeformat", config_key) == 0) {
+            TIME_FORMAT = config_value;
+            printf("\ntime format: %s", TIME_FORMAT);
+        }
+    }
+
+    return true;
+}
+
+void parse_flag(const char *flag, const char *flag_argument) {
+    printf("\n\n got a flag: %s", flag);
+    printf("\n\n got flag's argument: %s", flag_argument);
+
+    if (strcmp("--config", flag) == 0) {
+        printf("got a config flag %s", flag_argument);
+
+        *config_path = *flag_argument;
+    }
+}
+
+void sheet_show() {
+    if( empty(CURRENT_SHEET)) {
+        printf("\nNo sheet currently selected.\n\n");
+    } else {
+        printf("\nCurrent sheet: %s\n\n", CURRENT_SHEET);
+    }
+}
+
+void sheet_create(char new_sheet_name) {
+    if (empty(SHEETS_FOLDER)) {
+        error("No sheets folder specified in config.");
+        return;
+    }
+
+    char *sheet_name = strcat(&new_sheet_name, ".csv");
+
+    FILE *new_sheet = fopen(strcat(SHEETS_FOLDER, sheet_name),"a");
+
+    if (!new_sheet) {
+        printf("Cannot create new sheet in %s", SHEETS_FOLDER);
+        return;
+    }
+
+    fprintf(new_sheet, "index,in,out,message");
+    fclose(new_sheet);
+}
+
+int execute_command(const char *command, const char *command_argument) {
+    if(strcmp(command, "in") == 0
+    || strcmp(command, "i") == 0) {
+        printf("\n time in command");
+        return 0;
+    }
+
+    if(strcmp(command, "out") == 0
+    || strcmp(command, "o") == 0) {
+        printf("\n time out command");
+        return 0;
+    }
+
+    if(strcmp(command, "sheet") == 0
+    || strcmp(command, "s") == 0) {
+        if (empty(command_argument)) {
+            sheet_show();
+        } else {
+            sheet_create(*command_argument);
+        }
+        return 0;
+    }
+
+    if(strcmp(command, "append") == 0
+    || strcmp(command, "a") == 0) {
+        printf("\n append message command");
+        return 0;
+    }
+
+    if(strcmp(command, "edit") == 0
+    || strcmp(command, "e") == 0) {
+        printf("\n edit sheet command");
+        return 0;
+    }
+
+    if(strcmp(command, "display") == 0
+    || strcmp(command, "d") == 0) {
+        printf("\n display time sheet command");
+        return 0;
+    }
+
+    if(strcmp(command, "help") == 0
+    || strcmp(command, "h") == 0) {
+        printf("\n display help command");
+        return 0;
+    }
+
+    printf("\n %s is an invalid command", command);
+    return 1;
 }
 
 int main(int argc, char *argv[]) {
+    int result = 0;
     char *command = "";
     char *command_argument = "";
 
     for(int i = 1; i < sizeof(&argv); i++) {
+        char *prev_arg = argv[i - 1];
         char *this_arg = argv[i];
 
         if(this_arg == NULL){
@@ -46,22 +199,31 @@ int main(int argc, char *argv[]) {
         }
 
         if(prefix("--", this_arg)) {
-            printf("\n\n got a flag: %s", this_arg);
             parse_flag(this_arg, argv[i + 1]);
             continue;
         }
 
-        if (empty(command)) {
-            command = this_arg;
-            printf("\n\n COMMAND: %s", command);
-        } else if (empty(command_argument)) {
-            command_argument = this_arg;
-            printf("\n\n COMMAND ARH: %s", command_argument);
-        } else {
-            printf("\n\nERROR: Unknown command '%s'\n\n", this_arg);
-            return 1;
+        if(!prefix("--", prev_arg)) {
+            if (empty(command)) {
+                command = this_arg;
+                printf("\n\n COMMAND: %s\n", command);
+            } else if (empty(command_argument)) {
+                command_argument = this_arg;
+                printf("\n\n COMMAND ARG: %s\n", command_argument);
+            } else {
+                printf("\n\nERROR: Unknown command '%s'\n\n", this_arg);
+                return error("Invalid command given.\n");
+            }
         }
     }
 
-    return 0;
+    if (empty(command)) {
+        return error("Invalid command given.\n");
+    }
+
+    config_load();
+
+    result = execute_command(command, command_argument);
+    fclose(config);
+    return result;
 }
