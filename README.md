@@ -28,7 +28,6 @@ I plan on keeping the config folder like this:
 ## Configuration
 
 ```
-timefolder=~/.betertin
 sheetsfolder=~/.betertin/sheets
 currentsheet=some time sheet
 editorcommand=vim
@@ -37,6 +36,13 @@ timeformat=<some date format in c>
 
 
 ## Usage
+
+#### Flags
+
+### Specify a different config file
+```
+--config <path> 
+```
 
 ### select or create new time sheet
 ```bash
@@ -56,6 +62,15 @@ $ t sheet
 $ t s
 ```
 
+### view all time sheets
+```bash
+$ t sheets
+
+# or 
+
+$ t ss
+```
+
 ### clock in to current time sheet
 ```bash
 $ t in "working on the readme"
@@ -72,15 +87,6 @@ $ t append "and on the run shell script"
 # or 
 
 $ t a "and on the run shell script"
-```
-
-### clock out of current time sheet
-```bash
-$ t out
-
-# or 
-
-$ t o
 ```
 
 ### clock out of current time sheet
