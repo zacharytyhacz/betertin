@@ -17,10 +17,10 @@
 FILE *config = NULL;
 char *config_path = "";
 
-char *SHEETS_FOLDER;
-char *CURRENT_SHEET;
-char *EDITOR_COMMAND;
-char *TIME_FORMAT;
+char *CONFIG_SHEETS_FOLDER;
+char *CONFIG_CURRENT_SHEET;
+char *CONFIG_EDITOR_COMMAND;
+char *CONFIG_TIME_FORMAT;
 
 bool empty(const char *text) {
     return text[0] == '\0';
@@ -73,29 +73,29 @@ bool config_load() {
         char *config_value = strtok(NULL, config_delim);
 
         if (strcmp("sheetsfolder", config_key) == 0) {
-            // SHEETS_FOLDER = config_value;
-            SHEETS_FOLDER = malloc(strlen(config_value) + 1);
-            strcpy(SHEETS_FOLDER, config_value);
-            printf("\nconfig sheets folder: %s", SHEETS_FOLDER);
+            // CONFIG_SHEETS_FOLDER = config_value;
+            CONFIG_SHEETS_FOLDER = malloc(strlen(config_value) + 1);
+            strcpy(CONFIG_SHEETS_FOLDER, config_value);
+            printf("\nconfig sheets folder: %s", CONFIG_SHEETS_FOLDER);
         }
 
         if (strcmp("currentsheet", config_key) == 0) {
-            CURRENT_SHEET = config_value;
-            printf("\nconfig current sheet: %s", CURRENT_SHEET);
+            CONFIG_CURRENT_SHEET = config_value;
+            printf("\nconfig current sheet: %s", CONFIG_CURRENT_SHEET);
         }
 
         if (strcmp("editorcommand", config_key) == 0) {
-            EDITOR_COMMAND = config_value;
-            printf("\nconfig edior command: %s", EDITOR_COMMAND);
+            CONFIG_EDITOR_COMMAND = config_value;
+            printf("\nconfig edior command: %s", CONFIG_EDITOR_COMMAND);
         }
 
         if (strcmp("timeformat", config_key) == 0) {
-            TIME_FORMAT = config_value;
-            printf("\ntime format: %s", TIME_FORMAT);
+            CONFIG_TIME_FORMAT = config_value;
+            printf("\ntime format: %s", CONFIG_TIME_FORMAT);
         }
     }
 
-    printf("\nconfig sheets folder: %s", SHEETS_FOLDER);
+    printf("\nconfig sheets folder: %s", CONFIG_SHEETS_FOLDER);
     return true;
 }
 
@@ -111,15 +111,15 @@ void parse_flag(const char *flag, const char *flag_argument) {
 }
 
 void sheet_show() {
-    if( empty(CURRENT_SHEET)) {
+    if( empty(CONFIG_CURRENT_SHEET)) {
         printf("\nNo sheet currently selected.\n\n");
     } else {
-        printf("\nCurrent sheet: %s\n\n", CURRENT_SHEET);
+        printf("\nCurrent sheet: %s\n\n", CONFIG_CURRENT_SHEET);
     }
 }
 
 void sheet_create(const char *new_sheet_name) {
-    if (empty(SHEETS_FOLDER)) {
+    if (empty(CONFIG_SHEETS_FOLDER)) {
         error("No sheets folder specified in config.");
         return;
     }
@@ -131,10 +131,10 @@ void sheet_create(const char *new_sheet_name) {
 
     printf("\n\n new sheet name: %s", sheet_name);
 
-    FILE *new_sheet = fopen(strcat(SHEETS_FOLDER, sheet_name),"a");
+    FILE *new_sheet = fopen(strcat(CONFIG_SHEETS_FOLDER, sheet_name),"a");
 
     if (!new_sheet) {
-        printf("Cannot create new sheet in %s", SHEETS_FOLDER);
+        printf("Cannot create new sheet in %s", CONFIG_SHEETS_FOLDER);
         return;
     }
 
@@ -157,7 +157,7 @@ int execute_command(const char *command, const char *command_argument) {
 
     if(strcmp(command, "sheet") == 0
     || strcmp(command, "s") == 0) {
-        printf("\nconfig sheets folder: %s", SHEETS_FOLDER);
+        printf("\nconfig sheets folder: %s", CONFIG_SHEETS_FOLDER);
         if (empty(command_argument)) {
             sheet_show();
         } else {
