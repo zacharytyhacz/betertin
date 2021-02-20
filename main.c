@@ -17,10 +17,10 @@
 FILE *config = NULL;
 char *config_path = "";
 
-char *SHEETS_FOLDER = "";
-char *CURRENT_SHEET = "";
-char *EDITOR_COMMAND = "";
-char *TIME_FORMAT = "";
+char *SHEETS_FOLDER;
+char *CURRENT_SHEET;
+char *EDITOR_COMMAND;
+char *TIME_FORMAT;
 
 bool empty(const char *text) {
     return text[0] == '\0';
@@ -70,10 +70,12 @@ bool config_load() {
 
     while(fgets(config_line, bufferLength, config)) {
         char *config_key = strtok(config_line, config_delim);
-        char* config_value = strtok(NULL, config_delim);
+        char *config_value = strtok(NULL, config_delim);
 
         if (strcmp("sheetsfolder", config_key) == 0) {
-            SHEETS_FOLDER = config_value;
+            // SHEETS_FOLDER = config_value;
+            SHEETS_FOLDER = malloc(strlen(config_value) + 1);
+            strcpy(SHEETS_FOLDER, config_value);
             printf("\nconfig sheets folder: %s", SHEETS_FOLDER);
         }
 
@@ -93,6 +95,7 @@ bool config_load() {
         }
     }
 
+    printf("\nconfig sheets folder: %s", SHEETS_FOLDER);
     return true;
 }
 
@@ -115,13 +118,18 @@ void sheet_show() {
     }
 }
 
-void sheet_create(char new_sheet_name) {
+void sheet_create(const char *new_sheet_name) {
     if (empty(SHEETS_FOLDER)) {
         error("No sheets folder specified in config.");
         return;
     }
 
-    char *sheet_name = strcat(&new_sheet_name, ".csv");
+    char *sheet_name = "";
+    sheet_name = strcat(sheet_name, new_sheet_name);
+
+    //sheet_name = strcat(sheet_name, ".csv");
+
+    printf("\n\n new sheet name: %s", sheet_name);
 
     FILE *new_sheet = fopen(strcat(SHEETS_FOLDER, sheet_name),"a");
 
@@ -149,10 +157,11 @@ int execute_command(const char *command, const char *command_argument) {
 
     if(strcmp(command, "sheet") == 0
     || strcmp(command, "s") == 0) {
+        printf("\nconfig sheets folder: %s", SHEETS_FOLDER);
         if (empty(command_argument)) {
             sheet_show();
         } else {
-            sheet_create(*command_argument);
+            sheet_create(command_argument);
         }
         return 0;
     }
