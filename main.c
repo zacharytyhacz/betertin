@@ -35,6 +35,18 @@ int error(char *message) {
     return 1;
 }
 
+void strip_whitespace(char *s) {
+    char *p2 = s;
+    while(*s != '\0') {
+        if(*s != '\t' && *s != '\n') {
+            *p2++ = *s++;
+        } else {
+            ++s;
+        }
+    }
+    *p2 = '\0';
+}
+
 bool config_initialize(const char *path) {
     FILE *init_config = fopen(path,"a");
 
@@ -124,14 +136,17 @@ void sheet_create(const char *new_sheet_name) {
         return;
     }
 
-    char *sheet_name = "";
-    sheet_name = strcat(sheet_name, new_sheet_name);
+    char sheet_name[128];
 
-    //sheet_name = strcat(sheet_name, ".csv");
+    strcpy(sheet_name, CONFIG_SHEETS_FOLDER);
+    strcat(sheet_name, new_sheet_name);
+    strcat(sheet_name, ".csv");
 
-    printf("\n\n new sheet name: %s", sheet_name);
+    strip_whitespace(sheet_name);
 
-    FILE *new_sheet = fopen(strcat(CONFIG_SHEETS_FOLDER, sheet_name),"a");
+    printf("\n\n full new sheet path: %s", sheet_name);
+
+    FILE *new_sheet = fopen(sheet_name,"a");
 
     if (!new_sheet) {
         printf("Cannot create new sheet in %s", CONFIG_SHEETS_FOLDER);
