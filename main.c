@@ -122,6 +122,13 @@ void parse_flag(const char *flag, const char *flag_argument) {
     }
 }
 
+void sheet_change(char *new_current_sheet) {
+    // open config
+    // set current time sheet to new current sheet
+    // save the config
+    // update CONFIG_CURRENT_SHEET var, or re-parse config
+}
+
 void sheet_show() {
     if( empty(CONFIG_CURRENT_SHEET)) {
         printf("\nNo sheet currently selected.\n\n");
