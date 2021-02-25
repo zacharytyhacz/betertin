@@ -24,7 +24,6 @@ I plan on keeping the config folder like this:
     └── working.csv
 ```
 
-
 ## Configuration
 
 ```
@@ -36,6 +35,11 @@ timeformat=<some date format in c>
 
 
 ## Usage
+
+since this is in the middle of development, you have to create the defaul config folders:
+- `$ mkdir -p ~/.config/betertin/sheets`
+
+this will be automatic soon
 
 #### Flags
 
