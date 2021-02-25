@@ -17,12 +17,16 @@
 FILE *config = NULL;
 char *config_path = "";
 
+char CONFIG_DELIM[1] = "=";
 char *CONFIG_SHEETS_FOLDER;
 char *CONFIG_CURRENT_SHEET;
 char *CONFIG_EDITOR_COMMAND;
 char *CONFIG_TIME_FORMAT;
 
 bool empty(const char *text) {
+    if (!text) {
+        return true;
+    }
     return text[0] == '\0';
 }
 
@@ -47,86 +51,148 @@ void strip_whitespace(char *s) {
     *p2 = '\0';
 }
 
-bool config_initialize(const char *path) {
-    FILE *init_config = fopen(path,"a");
+void config_set_key(FILE *opened_config, char *key, char *value) {
+    fprintf(opened_config,"%s%s%s\n",key,CONFIG_DELIM, value);
+}
 
-    if (!init_config) {
+bool config_initialize(const char *path) {
+    FILE *init_config = fopen(path, "w");
+
+    if (init_config == NULL) {
         return false;
     }
 
-    fprintf(init_config, "sheetsfolder=/home/zac/.config/betertin/sheets/\n");
-    fprintf(init_config, "currentsheet=\n");
-    fprintf(init_config, "editorcommand=vim\n");
-    fprintf(init_config, "timeformat=\n");
+    config_set_key(init_config, "sheetsfolder" , "/home/zac/.config/betertin/sheets/");
+    config_set_key(init_config, "currentsheet" , "");
+    config_set_key(init_config, "editorcommand", "vim");
+    config_set_key(init_config, "timeformat"   , "");
 
     fclose(init_config);
 
     return true;
 }
 
+char* config_default_path() {
+    char *default_path = "/.config/betertine/config";
+    
+    // create folder betertin
+    // create folder sheets/ in betertin folder
+
+    char *default_config_path = malloc(strlen(getenv("HOME")) + 1);
+    default_config_path = malloc(strlen(default_config_path) + strlen(default_path) + 1);
+
+    strcat(default_config_path, getenv("HOME"));
+    strcat(default_config_path, default_path);
+
+    // printf("ok config default path: %s\n\n", default_config_path);
+    return default_config_path;
+}
+
 bool config_load() {
     int bufferLength = 255;
     char config_line[bufferLength];
-    char config_delim[] = "=";
 
     if ( empty(config_path) ){
-        config_path = strcat(getenv("HOME"), "/.config/betertin/config");
+
+        // printf("config path is empty so default. \n\n\n");
+
+        // char *default_config_path = config_default_path();
+        // config_path = malloc(strlen(default_config_path));
+        
+        config_path = malloc(strlen("/home/zac/.config/betertin/config") + 1);
+        strcpy(config_path, "/home/zac/.config/betertin/config");
     }
+    
+    config = fopen(config_path, "r");
 
-    config = fopen(config_path,"r");
-
-    if (!config && !config_initialize(config_path)) {
-        error("Failed to inititalize the config\n\n");
-        return false;
+    if (config == NULL){
+        if(!config_initialize(config_path)) {
+            return error("Failed to inititalize the config\n\n");
+        }
+        config = fopen(config_path, "r");
     }
 
     while(fgets(config_line, bufferLength, config)) {
-        char *config_key = strtok(config_line, config_delim);
-        char *config_value = strtok(NULL, config_delim);
+        strip_whitespace(config_line);
+
+        char *config_key = strtok(config_line, CONFIG_DELIM);
+        char *config_value = strtok(NULL, CONFIG_DELIM);
+
+        if (config_value == NULL) {
+            config_value = malloc(1);
+            config_value = "";
+        }
 
         if (strcmp("sheetsfolder", config_key) == 0) {
-            // CONFIG_SHEETS_FOLDER = config_value;
             CONFIG_SHEETS_FOLDER = malloc(strlen(config_value) + 1);
             strcpy(CONFIG_SHEETS_FOLDER, config_value);
-            printf("\nconfig sheets folder: %s", CONFIG_SHEETS_FOLDER);
         }
 
         if (strcmp("currentsheet", config_key) == 0) {
-            CONFIG_CURRENT_SHEET = config_value;
-            printf("\nconfig current sheet: %s", CONFIG_CURRENT_SHEET);
+            CONFIG_CURRENT_SHEET = malloc(strlen(config_value) + 1);
+            strcpy(CONFIG_CURRENT_SHEET, config_value);
         }
 
         if (strcmp("editorcommand", config_key) == 0) {
-            CONFIG_EDITOR_COMMAND = config_value;
-            printf("\nconfig edior command: %s", CONFIG_EDITOR_COMMAND);
+            CONFIG_EDITOR_COMMAND = malloc(strlen(config_value) + 1);
+            strcpy(CONFIG_EDITOR_COMMAND, config_value);
         }
 
         if (strcmp("timeformat", config_key) == 0) {
-            CONFIG_TIME_FORMAT = config_value;
-            printf("\ntime format: %s", CONFIG_TIME_FORMAT);
+            CONFIG_TIME_FORMAT = malloc(strlen(config_value) + 1);
+            strcpy(CONFIG_TIME_FORMAT, config_value);
         }
     }
 
-    printf("\nconfig sheets folder: %s", CONFIG_SHEETS_FOLDER);
+    printf("\n\n-----------debug-------------------\n");
+    printf("CONFIG_SHEETS_FOLDER : %s \n", CONFIG_SHEETS_FOLDER);
+    printf("CONFIG_CURRENT_SHEET : %s \n", CONFIG_CURRENT_SHEET);
+    printf("CONFIG_EDITOR_COMMAND: %s \n", CONFIG_EDITOR_COMMAND);
+    printf("CONFIG_TIME_FORMAT   : %s \n", CONFIG_TIME_FORMAT);
+    printf("-----------------------------------\n\n");
+
     return true;
 }
 
 void parse_flag(const char *flag, const char *flag_argument) {
-    printf("\n\n got a flag: %s", flag);
-    printf("\n\n got flag's argument: %s", flag_argument);
-
     if (strcmp("--config", flag) == 0) {
-        printf("got a config flag %s", flag_argument);
-
         *config_path = *flag_argument;
     }
 }
 
-void sheet_change(char *new_current_sheet) {
+void sheet_change(const char *new_current_sheet) {
+    // check if new sheet is same as current
+    if(strcmp(new_current_sheet, CONFIG_CURRENT_SHEET) == 0) {
+        printf("Already on the time sheet '%s'\n", new_current_sheet);
+        return;
+    }
+
     // open config
+    if (config == NULL) {
+        printf("Something went wrong trying to open your config.\n");
+        return;
+    }
+
+    // close read-only config, reopen to write new config
+    fclose(config);
+    config = fopen(config_path, "w");
+
     // set current time sheet to new current sheet
-    // save the config
-    // update CONFIG_CURRENT_SHEET var, or re-parse config
+    CONFIG_CURRENT_SHEET = malloc(strlen(new_current_sheet) + 1);
+    strcpy(CONFIG_CURRENT_SHEET, new_current_sheet);
+
+    // rewrite and save the config
+    config_set_key(config, "sheetsfolder",  CONFIG_SHEETS_FOLDER);
+    config_set_key(config, "currentsheet",  CONFIG_CURRENT_SHEET);
+    config_set_key(config, "editorcommand", CONFIG_EDITOR_COMMAND);
+    config_set_key(config, "timeformat",    CONFIG_TIME_FORMAT);
+
+    fclose(config);
+
+    // reopen as read-only safely
+    config = fopen(config_path,"r");
+
+    printf("\n\nSwitched to sheet '%s'\n\n", new_current_sheet);
 }
 
 void sheet_show() {
@@ -151,9 +217,7 @@ void sheet_create(const char *new_sheet_name) {
 
     strip_whitespace(sheet_name);
 
-    printf("\n\n full new sheet path: %s", sheet_name);
-
-    FILE *new_sheet = fopen(sheet_name,"a");
+    FILE *new_sheet = fopen(sheet_name,"w");
 
     if (!new_sheet) {
         printf("Cannot create new sheet in %s", CONFIG_SHEETS_FOLDER);
@@ -162,24 +226,23 @@ void sheet_create(const char *new_sheet_name) {
 
     fprintf(new_sheet, "index,in,out,message");
     fclose(new_sheet);
+
+    sheet_change(new_sheet_name);
 }
 
 int execute_command(const char *command, const char *command_argument) {
     if(strcmp(command, "in") == 0
     || strcmp(command, "i") == 0) {
-        printf("\n time in command");
         return 0;
     }
 
     if(strcmp(command, "out") == 0
     || strcmp(command, "o") == 0) {
-        printf("\n time out command");
         return 0;
     }
 
     if(strcmp(command, "sheet") == 0
     || strcmp(command, "s") == 0) {
-        printf("\nconfig sheets folder: %s", CONFIG_SHEETS_FOLDER);
         if (empty(command_argument)) {
             sheet_show();
         } else {
@@ -190,25 +253,21 @@ int execute_command(const char *command, const char *command_argument) {
 
     if(strcmp(command, "append") == 0
     || strcmp(command, "a") == 0) {
-        printf("\n append message command");
         return 0;
     }
 
     if(strcmp(command, "edit") == 0
     || strcmp(command, "e") == 0) {
-        printf("\n edit sheet command");
         return 0;
     }
 
     if(strcmp(command, "display") == 0
     || strcmp(command, "d") == 0) {
-        printf("\n display time sheet command");
         return 0;
     }
 
     if(strcmp(command, "help") == 0
     || strcmp(command, "h") == 0) {
-        printf("\n display help command");
         return 0;
     }
 
@@ -237,10 +296,10 @@ int main(int argc, char *argv[]) {
         if(!prefix("--", prev_arg)) {
             if (empty(command)) {
                 command = this_arg;
-                printf("\n\n COMMAND: %s\n", command);
+                // printf("\n\n COMMAND: %s\n", command);
             } else if (empty(command_argument)) {
                 command_argument = this_arg;
-                printf("\n\n COMMAND ARG: %s\n", command_argument);
+                // printf("\n\n COMMAND ARG: %s\n", command_argument);
             } else {
                 printf("\n\nERROR: Unknown command '%s'\n\n", this_arg);
                 return error("Invalid command given.\n");
@@ -252,7 +311,9 @@ int main(int argc, char *argv[]) {
         return error("Invalid command given.\n");
     }
 
-    config_load();
+    if(!config_load()) {
+        return error("Cannot load config.\n");
+    }
 
     result = execute_command(command, command_argument);
     fclose(config);
