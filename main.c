@@ -1,7 +1,9 @@
 #include <stdio.h>
+#include <ctype.h>
 #include <stdlib.h>
 #include <stdbool.h>
 #include <string.h>
+#include <time.h>
 
 // my first c program
 
@@ -39,6 +41,15 @@ int error(char *message) {
     return 1;
 }
 
+unsigned int convert(char *st) {
+  char *x;
+  for (x = st ; *x ; x++) {
+    if (!isdigit(*x))
+      return 0L;
+  }
+  return (strtoul(st, 0L, 10));
+}
+
 void strip_whitespace(char *s) {
     char *p2 = s;
     while(*s != '\0') {
@@ -65,7 +76,7 @@ bool config_initialize(const char *path) {
     config_set_key(init_config, "sheetsfolder" , "/home/zac/.config/betertin/sheets/");
     config_set_key(init_config, "currentsheet" , "");
     config_set_key(init_config, "editorcommand", "vim");
-    config_set_key(init_config, "timeformat"   , "");
+    config_set_key(init_config, "timeformat"   , "%FT%TZ");
 
     fclose(init_config);
 
@@ -144,12 +155,12 @@ bool config_load() {
         }
     }
 
-    printf("\n\n-----------debug-------------------\n");
+    printf("\n-----------debug-------------------\n");
     printf("CONFIG_SHEETS_FOLDER : %s \n", CONFIG_SHEETS_FOLDER);
     printf("CONFIG_CURRENT_SHEET : %s \n", CONFIG_CURRENT_SHEET);
     printf("CONFIG_EDITOR_COMMAND: %s \n", CONFIG_EDITOR_COMMAND);
     printf("CONFIG_TIME_FORMAT   : %s \n", CONFIG_TIME_FORMAT);
-    printf("-----------------------------------\n\n");
+    printf("-----------------------------------\n");
 
     return true;
 }
@@ -158,19 +169,22 @@ void parse_flag(const char *flag, const char *flag_argument) {
     if (strcmp("--config", flag) == 0) {
         *config_path = *flag_argument;
     }
+    if (strcmp("--help", flag) == 0) {
+        printf("\n\nshow help\n");
+    }
 }
 
-void sheet_change(const char *new_current_sheet) {
+int sheet_change(const char *new_current_sheet) {
     // check if new sheet is same as current
     if(strcmp(new_current_sheet, CONFIG_CURRENT_SHEET) == 0) {
         printf("Already on the time sheet '%s'\n", new_current_sheet);
-        return;
+        return 1;
     }
 
     // open config
     if (config == NULL) {
         printf("Something went wrong trying to open your config.\n");
-        return;
+        return 1;
     }
 
     // close read-only config, reopen to write new config
@@ -193,20 +207,23 @@ void sheet_change(const char *new_current_sheet) {
     config = fopen(config_path,"r");
 
     printf("\n\nSwitched to sheet '%s'\n\n", new_current_sheet);
+    return 0;
 }
 
-void sheet_show() {
+int sheet_show() {
     if( empty(CONFIG_CURRENT_SHEET)) {
         printf("\nNo sheet currently selected.\n\n");
+        return 1;
     } else {
         printf("\nCurrent sheet: %s\n\n", CONFIG_CURRENT_SHEET);
+        return 0;
     }
 }
 
-void sheet_create(const char *new_sheet_name) {
+int sheet_create(const char *new_sheet_name) {
     if (empty(CONFIG_SHEETS_FOLDER)) {
         error("No sheets folder specified in config.");
-        return;
+        return 1;
     }
 
     char sheet_name[128];
@@ -221,19 +238,120 @@ void sheet_create(const char *new_sheet_name) {
 
     if (!new_sheet) {
         printf("Cannot create new sheet in %s", CONFIG_SHEETS_FOLDER);
-        return;
+        return 1;
     }
 
     fprintf(new_sheet, "index,in,out,message");
     fclose(new_sheet);
 
-    sheet_change(new_sheet_name);
+    return sheet_change(new_sheet_name);
+}
+
+char *parse_time_record(char* in_line, char *key) {
+    char* line = malloc(strlen(in_line) + 1);
+
+    strcpy(line, in_line);
+
+    // printf("\n\n full line: %s", line);
+    char *index = strtok(line, ",");
+
+    // printf("\n\n fetching key: %s", key);
+    if (strcmp(key, "index") == 0) {
+        // printf("\n\n returning: %s", index);
+        return index;
+    }
+
+    char *time_in = strtok(NULL, ",");
+    if (strcmp(key, "in") == 0) {
+        return time_in;
+    }
+
+    char *time_out = strtok(NULL, ",");
+    if (strcmp(key, "out") == 0) {
+        return time_out;
+    }
+
+    char *last_message = strtok(NULL, ",");
+    if (strcmp(key, "message") == 0) {
+        return last_message;
+    }
+
+    return "invalid";
+}
+
+void get_now(char* out_time) {
+    time_t now = time(NULL);
+    struct tm *t = localtime(&now);
+
+    //strftime(out_time, 32, "%Y-%m-%d %H:%M:%S", t);
+    // strftime(out_time, 32, "%FT%TZ", t);
+    strftime(out_time, 32, CONFIG_TIME_FORMAT, t);
+}
+
+int time_in(const char *message) {
+    if(empty(CONFIG_CURRENT_SHEET)) {
+        return error("\nNo time sheet selected.\n");
+    }
+
+    char *sheet_path = malloc(128);
+    strcat(sheet_path,CONFIG_SHEETS_FOLDER);
+    strcat(sheet_path,CONFIG_CURRENT_SHEET);
+    strcat(sheet_path, ".csv");
+
+    // check sheet file and last entered record
+    char line[1024]={0,};
+    FILE *check = fopen(sheet_path, "r");
+
+    if(check == NULL) {
+        return error("\n\nFailed to open time sheet");
+    }
+
+    while( fgets(line, 1024, check) != NULL ) {
+        // Just search for the latest line, do nothing in the loop
+    }
+
+    fclose(check);
+
+    char *is_timed_out = parse_time_record(line, "out");
+    if(empty(is_timed_out)) {
+        return error("\n\nAlready timed in.\n\n");
+    }
+
+    char *last_printed_index = parse_time_record(line, "index");
+    int last_index = 0;
+
+    if (!empty(last_printed_index)) {
+        last_index = convert(last_printed_index);
+    }
+
+    int index = last_index + 1;
+
+    // open sheet file to append
+    FILE *sheet = fopen(sheet_path, "a");
+
+    if(sheet == NULL) {
+        return error("\n\nFailed to open time sheet");
+    }
+
+    char now[64];
+    get_now(now);
+
+    fprintf(sheet, "\n%d,%s,,%s", index, now, message);
+    fclose(sheet);
+
+    printf("\n\nTimed into '%s'...\n\n", CONFIG_CURRENT_SHEET);
+
+    return 0;
 }
 
 int execute_command(const char *command, const char *command_argument) {
     if(strcmp(command, "in") == 0
     || strcmp(command, "i") == 0) {
-        return 0;
+        if (empty(command_argument)) {
+            return time_in("");
+        } else {
+            return time_in(command_argument);
+        }
     }
 
     if(strcmp(command, "out") == 0
@@ -244,11 +362,10 @@ int execute_command(const char *command, const char *command_argument) {
     if(strcmp(command, "sheet") == 0
     || strcmp(command, "s") == 0) {
         if (empty(command_argument)) {
-            sheet_show();
+            return sheet_show();
         } else {
-            sheet_create(command_argument);
+            return sheet_create(command_argument);
         }
-        return 0;
     }
 
     if(strcmp(command, "append") == 0
@@ -258,6 +375,20 @@ int execute_command(const char *command, const char *command_argument) {
 
     if(strcmp(command, "edit") == 0
     || strcmp(command, "e") == 0) {
+        if (empty(CONFIG_CURRENT_SHEET)) {
+            return error("\nNo current sheet selected.");
+        }
+        char *open = malloc(128);
+
+        strcat(open, CONFIG_EDITOR_COMMAND);
+        strcat(open, " ");
+        strcat(open, CONFIG_SHEETS_FOLDER);
+        strcat(open, CONFIG_CURRENT_SHEET);
+        strcat(open, ".csv");
+
+        printf("execute command:\n%s \n\n", open);
+        system(open);
+
         return 0;
     }
 
@@ -268,6 +399,7 @@ int execute_command(const char *command, const char *command_argument) {
 
     if(strcmp(command, "help") == 0
     || strcmp(command, "h") == 0) {
+        printf("\n\nshow help\n");
         return 0;
     }
 
