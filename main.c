@@ -386,7 +386,7 @@ int execute_command(const char *command, const char *command_argument) {
         strcat(open, CONFIG_CURRENT_SHEET);
         strcat(open, ".csv");
 
-        printf("execute command:\n%s \n\n", open);
+        printf("\nEditing timesheet...\n%s \n\n", open);
         system(open);
 
         return 0;
