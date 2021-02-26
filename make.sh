@@ -1,3 +1,3 @@
 #!/bin/bash
 
-gcc main.c -o tin
+gcc main.c -o t
