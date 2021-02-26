@@ -26,12 +26,15 @@ I plan on keeping the config folder like this:
 
 ## Configuration
 
+- [Time Formatting Specifiers](https://www.ibm.com/support/knowledgecenter/ssw_ibm_i_73/rtref/strfti.htm)
+
 ```
 sheetsfolder=~/.betertin/sheets
 currentsheet=some time sheet
 editorcommand=vim
 timeformat=<some date format in c>
 ```
+
 
 
 ## Usage
