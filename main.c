@@ -165,12 +165,31 @@ bool config_load() {
     return true;
 }
 
+int show_help() {
+    printf("\n");
+    printf("betertin is a simple, fast time managament program made in C.");
+
+    printf("\n");
+    printf("\n");
+
+    printf("Usage:\n");
+    printf("    t [...flags] [command] [command_argument]");
+
+    printf("\n");
+    printf("\n");
+    printf("Flags:\n");
+    printf("    --config [path]");
+    printf("Commands:\n");
+    printf("sheet");
+    return 0;
+}
+
 void parse_flag(const char *flag, const char *flag_argument) {
     if (strcmp("--config", flag) == 0) {
         *config_path = *flag_argument;
     }
     if (strcmp("--help", flag) == 0) {
-        printf("\n\nshow help\n");
+        show_help();
     }
 }
 
@@ -252,26 +271,26 @@ char *parse_time_record(char* in_line, char *key) {
 
     strcpy(line, in_line);
 
-    // printf("\n\n full line: %s", line);
     char *index = strtok(line, ",");
-
-    // printf("\n\n fetching key: %s", key);
+    printf("\nparsed index: %s", index);
     if (strcmp(key, "index") == 0) {
-        // printf("\n\n returning: %s", index);
         return index;
     }
 
     char *time_in = strtok(NULL, ",");
+    printf("\nparsed time in: %s", time_in);
     if (strcmp(key, "in") == 0) {
         return time_in;
     }
 
     char *time_out = strtok(NULL, ",");
+    printf("\nparsed time out: %s\n\n", time_out);
     if (strcmp(key, "out") == 0) {
         return time_out;
     }
 
     char *last_message = strtok(NULL, ",");
+    printf("\nparsed message: %s", last_message);
     if (strcmp(key, "message") == 0) {
         return last_message;
     }
@@ -288,32 +307,95 @@ void get_now(char* out_time) {
     strftime(out_time, 32, CONFIG_TIME_FORMAT, t);
 }
 
-int time_in(const char *message) {
-    if(empty(CONFIG_CURRENT_SHEET)) {
-        return error("\nNo time sheet selected.\n");
-    }
+void get_last_line_of(FILE *file, char *out_line) {
+    // char line[1024]={0,};
 
+    while( fgets(out_line, 255, file) != NULL ) {
+        // Just search for the latest line, do nothing in the loop
+    }
+}
+
+char * get_current_sheet_path() {
     char *sheet_path = malloc(128);
+
     strcat(sheet_path,CONFIG_SHEETS_FOLDER);
     strcat(sheet_path,CONFIG_CURRENT_SHEET);
     strcat(sheet_path, ".csv");
 
-    // check sheet file and last entered record
-    char line[1024]={0,};
-    FILE *check = fopen(sheet_path, "r");
+    return sheet_path;
+}
+
+FILE * open_current_sheet(const char *method) {
+    const char *sheet_path = get_current_sheet_path();
+    return fopen(sheet_path, method);
+}
+
+bool already_timed_in(char* line) {
+    char *is_timed_out = parse_time_record(line, "out");
+
+    if (!empty(is_timed_out)) {
+        if (strcmp(is_timed_out, "out") == 0) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+int get_position_of_out_column (char* line) {
+    char *e;
+    int index;
+
+    e = strchr(line, ',');
+
+    for(int i = 0; i < 2; i++) {
+        index = (int)(e - line);
+    }
+
+    return index;
+}
+
+int time_out() {
+    FILE *check = open_current_sheet("w+");
 
     if(check == NULL) {
         return error("\n\nFailed to open time sheet");
     }
 
-    while( fgets(line, 1024, check) != NULL ) {
-        // Just search for the latest line, do nothing in the loop
+    char line[256]={0,};
+
+    get_last_line_of(check, line);
+
+    if(!already_timed_in(line)) {
+        return error("\n\nNot timed in.\n\n");
     }
 
-    fclose(check);
+    // edit last line's out column
 
-    char *is_timed_out = parse_time_record(line, "out");
-    if(empty(is_timed_out)) {
+    int out_column_position = get_position_of_out_column(line);
+    fseek(check, out_column_position, SEEK_END);
+    fputs("test", check);
+    fclose(check);
+    printf("\n\nTimed out of '%s'.\n\n",CONFIG_CURRENT_SHEET);
+
+    return 0;
+}
+
+int time_in(const char *message) {
+    if(empty(CONFIG_CURRENT_SHEET)) {
+        return error("\nNo time sheet selected.\n");
+    }
+
+    FILE *check = open_current_sheet("r");
+
+    if(check == NULL) {
+        return error("\n\nFailed to open time sheet");
+    }
+
+    char line[1024]={0,};
+    get_last_line_of(check, line);
+
+    if (already_timed_in(line)) {
         return error("\n\nAlready timed in.\n\n");
     }
 
@@ -327,7 +409,7 @@ int time_in(const char *message) {
     int index = last_index + 1;
 
     // open sheet file to append
-    FILE *sheet = fopen(sheet_path, "a");
+    FILE *sheet = fopen(get_current_sheet_path(), "a");
 
     if(sheet == NULL) {
         return error("\n\nFailed to open time sheet");
@@ -356,7 +438,7 @@ int execute_command(const char *command, const char *command_argument) {
 
     if(strcmp(command, "out") == 0
     || strcmp(command, "o") == 0) {
-        return 0;
+        return time_out();
     }
 
     if(strcmp(command, "sheet") == 0
@@ -399,8 +481,7 @@ int execute_command(const char *command, const char *command_argument) {
 
     if(strcmp(command, "help") == 0
     || strcmp(command, "h") == 0) {
-        printf("\n\nshow help\n");
-        return 0;
+        return show_help();
     }
 
     printf("\n %s is an invalid command", command);
